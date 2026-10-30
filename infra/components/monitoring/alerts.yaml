@@ -1,0 +1,27 @@
+# Alertes maison, en plus de celles fournies par kube-prometheus-stack.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: alertes-kube
+  labels:
+    app.kubernetes.io/name: alertes-kube
+    app.kubernetes.io/part-of: monitoring
+spec:
+  groups:
+    - name: disponibilite
+      rules:
+        # Le chart a déjà KubePodNotReady, mais au bout de 15 min : trop lent pour voir
+        # une version défaillante qui ne prend pas le trafic (scénario de la démo).
+        - alert: PodNonPret
+          # « Running » exclut les pods terminés (ex. un CronJob de backup fini),
+          # qui sont non-Ready par nature.
+          expr: |
+            kube_pod_status_ready{condition="false"} == 1
+            and on (namespace, pod)
+            kube_pod_status_phase{phase="Running"} == 1
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} en Running mais pas Ready"
+            description: "La readiness probe échoue depuis plus de 2 minutes : le pod ne reçoit pas de trafic."

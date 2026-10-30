@@ -1,0 +1,68 @@
+# On ne met ici que ce qui diffère des défauts du chart kube-prometheus-stack.
+# Objectif : tenir dans ~4 Go par nœud, avec requests/limits partout (règle du groupe).
+
+prometheus:
+  prometheusSpec:
+    replicas: 1
+    retention: 2d
+    retentionSize: 1GB
+    resources:
+      requests: { cpu: 100m, memory: 400Mi }
+      limits: { cpu: 500m, memory: 800Mi }
+    # Par défaut Prometheus ne lit que les ServiceMonitor/règles portant le label du chart :
+    # on lui fait ramasser ceux de tous les namespaces (app d'Aaditya, alertes maison).
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits: { cpu: 100m, memory: 64Mi }
+
+grafana:
+  # Sans ça, le chart génère un mot de passe aléatoire à CHAQUE rendu : sous Argo CD,
+  # l'app reste OutOfSync et le mot de passe change à chaque sync.
+  # Le Secret `grafana-admin` vient d'ailleurs (SealedSecret, rôle sécurité).
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  # Prometheus est déclaré par le chart ; Loki vient du composant `logs`
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki.logs.svc:3100
+      access: proxy
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 300m, memory: 256Mi }
+  sidecar:
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { cpu: 100m, memory: 128Mi }
+
+prometheusOperator:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 100m, memory: 128Mi }
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    # À 100m, node-exporter était freiné 30-45 % du temps (alerte CPUThrottlingHigh) :
+    # il a besoin de pics courts à chaque scrape.
+    limits: { cpu: 300m, memory: 64Mi }
+
+# k3s embarque etcd, controller-manager, scheduler et kube-proxy dans un seul binaire :
+# il n'y a rien à scraper séparément en local. À réactiver sur le cluster kubeadm.
+kubeEtcd: { enabled: false }
+kubeControllerManager: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeProxy: { enabled: false }

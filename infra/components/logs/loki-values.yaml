@@ -1,0 +1,46 @@
+# Loki en un seul pod (SingleBinary) avec stockage sur disque :
+# les modes distribués visent de gros volumes, pas 3 nœuds de ~4 Go.
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  limits_config:
+    retention_period: 48h
+  compactor:
+    # Sans ça, retention_period n'efface rien
+    retention_enabled: true
+    delete_request_store: filesystem
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+  persistence:
+    enabled: true
+    size: 2Gi
+
+# Les composants des modes distribués, à zéro
+backend: { replicas: 0 }
+read: { replicas: 0 }
+write: { replicas: 0 }
+
+# Activés par défaut et gourmands (les caches memcached réservent plusieurs Go)
+chunksCache: { enabled: false }
+resultsCache: { enabled: false }
+gateway: { enabled: false }
+lokiCanary: { enabled: false }
+test: { enabled: false }

@@ -1,0 +1,20 @@
+# Application racine (pattern app-of-apps) : appliquée une seule fois avec kubectl.
+# Elle surveille infra/apps/ et crée toutes les autres Applications qui s'y trouvent.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: http://host.k3d.internal:3000/hamid/kube-infra.git
+    targetRevision: main
+    path: infra/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

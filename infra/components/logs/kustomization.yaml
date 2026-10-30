@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+helmCharts:
+  # Stockage et requêtes des logs
+  - name: loki
+    repo: https://grafana.github.io/helm-charts
+    version: 7.5.0
+    releaseName: loki
+    namespace: logs
+    valuesFile: loki-values.yaml
+  # Agent de collecte : un pod par nœud qui lit /var/log/pods et pousse vers Loki
+  - name: alloy
+    repo: https://grafana.github.io/helm-charts
+    version: 1.15.0
+    releaseName: alloy
+    namespace: logs
+    valuesFile: alloy-values.yaml

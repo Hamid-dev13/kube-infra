@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: logs
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: http://host.k3d.internal:3000/hamid/kube-infra.git
+    targetRevision: main
+    path: infra/components/logs
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logs
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

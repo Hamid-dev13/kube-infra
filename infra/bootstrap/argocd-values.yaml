@@ -1,0 +1,6 @@
+# Values du chart argo/argo-cd, utilisées UNE fois pour l'installation initiale
+# (en local à la main, sur AWS par le playbook Ansible). Ensuite tout passe par Git.
+configs:
+  cm:
+    # Autorise kustomize à rendre des charts Helm (bloc `helmCharts:` des kustomization.yaml)
+    kustomize.buildOptions: --enable-helm
