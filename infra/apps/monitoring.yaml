@@ -3,6 +3,10 @@ kind: Application
 metadata:
   name: monitoring
   namespace: argocd
+  # Supprimer cette Application (ex. retirer ce fichier de Git) supprime aussi
+  # tout ce qu'elle a déployé. Sans ça, les ressources restent orphelines.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
