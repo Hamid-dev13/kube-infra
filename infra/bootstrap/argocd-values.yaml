@@ -4,3 +4,54 @@ configs:
   cm:
     # Autorise kustomize à rendre des charts Helm (bloc `helmCharts:` des kustomization.yaml)
     kustomize.buildOptions: --enable-helm
+
+# requests/limits sur chaque conteneur (règle du groupe, et la ValidatingAdmissionPolicy
+# bloquerait sinon Argo CD lui-même). Mesuré au labo : controller ~210 Mi, repo-server ~140 Mi.
+controller:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 512Mi }
+
+# Rend les charts Helm : pics courts mais forts (kube-prometheus-stack = 85 000 lignes)
+repoServer:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: "1", memory: 512Mi }
+  copyutil:
+    resources:
+      requests: { cpu: 10m, memory: 16Mi }
+      limits: { cpu: 100m, memory: 32Mi }
+
+server:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { cpu: 500m, memory: 128Mi }
+
+applicationSet:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 200m, memory: 64Mi }
+
+notifications:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 200m, memory: 64Mi }
+
+redis:
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { cpu: 200m, memory: 64Mi }
+
+dex:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 200m, memory: 64Mi }
+  initImage:
+    resources:
+      requests: { cpu: 10m, memory: 16Mi }
+      limits: { cpu: 100m, memory: 32Mi }
+
+redisSecretInit:
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { cpu: 100m, memory: 32Mi }
