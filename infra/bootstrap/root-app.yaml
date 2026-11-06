@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: http://host.k3d.internal:3000/hamid/kube-infra.git
+    repoURL: https://github.com/Hamid-dev13/kube-infra.git
     targetRevision: main
     path: infra/apps
   destination:

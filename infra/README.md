@@ -26,6 +26,9 @@ Application lit son dossier dans `components/` et le déploie dans son namespace
 
 Prérequis : un cluster joignable par `kubectl`, et `helm`.
 
+Argo CD lit ce repo depuis https://github.com/Hamid-dev13/kube-infra (public : aucun
+identifiant à fournir). Ne jamais y commiter de secret en clair.
+
 ```bash
 # 1. Argo CD (version du chart fixée pour que l'installation soit reproductible)
 helm repo add argo https://argoproj.github.io/argo-helm
@@ -91,8 +94,8 @@ kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-passwor
 
 ## Reste à faire pour le cluster AWS
 
-- [ ] Remplacer les `repoURL` (Gitea du labo `host.k3d.internal`) par l'URL GitHub de ce repo,
-      et fournir à Argo CD un accès en lecture (identifiant injecté par Ansible au bootstrap).
+- [x] `repoURL` pointés sur le repo public `Hamid-dev13/kube-infra` (le repo Epitech est
+      privé et une deploy key demande des droits admin que le groupe n'a pas).
 - [ ] Bootstrap (étapes 1 à 3) intégré au playbook Ansible.
 - [ ] Réactiver `kubeEtcd`, `kubeControllerManager`, `kubeScheduler`, `kubeProxy` dans
       `components/monitoring/values.yaml` (désactivés car k3s les embarque), et faire
