@@ -7,7 +7,10 @@ Tout l'outillage du cluster (GitOps, monitoring, logs) est décrit ici et appliq
 
 ```
 infra/
-├── bootstrap/                 appliqué UNE fois (par Ansible sur AWS)
+├── ansible/                   rôle qui joue le bootstrap (à brancher sur le playbook du cluster)
+│   ├── bootstrap-platform.yml
+│   └── roles/platform_bootstrap/
+├── bootstrap/                 appliqué UNE fois, par le rôle Ansible
 │   ├── argocd-values.yaml       réglages d'installation d'Argo CD
 │   └── root-app.yaml            Application racine (pattern app-of-apps)
 ├── apps/                      surveillé par l'Application racine
@@ -23,6 +26,30 @@ Chaîne de déploiement : `root` lit `apps/` et crée une Application par fichie
 Application lit son dossier dans `components/` et le déploie dans son namespace.
 
 ## Bootstrap
+
+### Par Ansible (cas normal)
+
+Le rôle `platform_bootstrap` joue les 3 étapes ci-dessous sur un nœud du control plane,
+une fois le cluster monté. Il est idempotent : le rejouer ne change rien.
+
+```yaml
+# à la fin du playbook du cluster
+- import_playbook: <chemin vers ce repo>/infra/ansible/bootstrap-platform.yml
+```
+
+Prérequis sur le contrôleur Ansible : `ansible-galaxy collection install kubernetes.core`.
+Le rôle installe lui-même `helm` et `python3-kubernetes` sur le nœud (Debian/Ubuntu).
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `platform_target` | `control_plane` | groupe d'inventaire visé (un seul nœud est utilisé) |
+| `platform_kubeconfig` | `/etc/kubernetes/admin.conf` | kubeconfig admin sur ce nœud (kubeadm) |
+| `platform_grafana_admin_password` | vide = généré une fois | à mettre dans le vault Ansible |
+| `platform_install_deps` | `true` | `false` si `python3-kubernetes` est déjà installé |
+
+Le rôle se termine en attendant que `root` soit `Synced` / `Healthy`.
+
+### À la main (labo)
 
 Prérequis : un cluster joignable par `kubectl`, et `helm`.
 
@@ -96,7 +123,8 @@ kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-passwor
 
 - [x] `repoURL` pointés sur le repo public `Hamid-dev13/kube-infra` (le repo Epitech est
       privé et une deploy key demande des droits admin que le groupe n'a pas).
-- [ ] Bootstrap (étapes 1 à 3) intégré au playbook Ansible.
+- [x] Rôle Ansible `platform_bootstrap` (testé sur le labo k3d, idempotent).
+- [ ] Le brancher à la fin du playbook du cluster (`import_playbook`) et tester sur AWS.
 - [ ] Réactiver `kubeEtcd`, `kubeControllerManager`, `kubeScheduler`, `kubeProxy` dans
       `components/monitoring/values.yaml` (désactivés car k3s les embarque), et faire
       exposer leurs métriques dans la configuration kubeadm.

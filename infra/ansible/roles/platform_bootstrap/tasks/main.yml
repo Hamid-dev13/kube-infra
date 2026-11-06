@@ -1,0 +1,104 @@
+# Reprend les étapes 1 à 3 du bootstrap décrit dans infra/README.md.
+# Idempotent : rejouer le rôle sur un cluster déjà installé ne change rien.
+
+- name: Dépendances des modules kubernetes.core (lib Python kubernetes)
+  ansible.builtin.package:
+    name: python3-kubernetes
+    state: present
+  become: true
+  when: platform_install_deps | bool
+
+- name: Chercher helm sur le nœud
+  ansible.builtin.command: which helm
+  register: platform_helm_which
+  changed_when: false
+  failed_when: false
+
+- name: Installer helm {{ platform_helm_version }}
+  ansible.builtin.unarchive:
+    src: "https://get.helm.sh/helm-{{ platform_helm_version }}-linux-{{ platform_helm_arch }}.tar.gz"
+    dest: /usr/local/bin
+    remote_src: true
+    extra_opts: [--strip-components=1, "linux-{{ platform_helm_arch }}/helm"]
+    mode: "0755"
+  become: true
+  when: platform_helm_which.rc != 0
+
+- name: Bootstrap de la plateforme
+  environment:
+    K8S_AUTH_KUBECONFIG: "{{ platform_kubeconfig }}"
+    KUBECONFIG: "{{ platform_kubeconfig }}"
+  block:
+    # --- Étape 1 : Argo CD -------------------------------------------------------
+    - name: Dépôt Helm argo
+      kubernetes.core.helm_repository:
+        name: argo
+        repo_url: https://argoproj.github.io/argo-helm
+
+    - name: Installer Argo CD (chart {{ platform_argocd_chart_version }})
+      kubernetes.core.helm:
+        name: argocd
+        chart_ref: argo/argo-cd
+        chart_version: "{{ platform_argocd_chart_version }}"
+        release_namespace: argocd
+        create_namespace: true
+        # Les values sont lues côté contrôleur Ansible, dans ce repo : une seule source.
+        release_values: "{{ lookup('ansible.builtin.file', role_path ~ '/../../../bootstrap/argocd-values.yaml') | from_yaml }}"
+        wait: true
+        wait_timeout: 10m
+
+    # --- Étape 2 : mot de passe admin de Grafana ---------------------------------
+    - name: Namespace monitoring
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Namespace
+        name: monitoring
+
+    - name: Secret grafana-admin existant ?
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        namespace: monitoring
+        name: grafana-admin
+      register: platform_grafana_secret
+
+    # Mot de passe fourni (vault) : il fait foi et est réappliqué à chaque passage.
+    # Sinon : généré une seule fois, à la création, puis jamais écrasé.
+    - name: Secret grafana-admin
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: grafana-admin
+            namespace: monitoring
+          type: Opaque
+          stringData:
+            admin-user: admin
+            admin-password: >-
+              {{ platform_grafana_admin_password
+                 if platform_grafana_admin_password | length > 0
+                 else lookup('ansible.builtin.password', '/dev/null length=24 chars=ascii_letters,digits') }}
+      no_log: true
+      when: >-
+        platform_grafana_admin_password | length > 0
+        or platform_grafana_secret.resources | length == 0
+
+    # --- Étape 3 : Application racine, à partir d'ici tout vient de Git ------------
+    - name: Application racine (app-of-apps)
+      kubernetes.core.k8s:
+        definition: "{{ lookup('ansible.builtin.file', role_path ~ '/../../../bootstrap/root-app.yaml') | from_yaml }}"
+
+    - name: Attendre que root soit Synced et Healthy
+      kubernetes.core.k8s_info:
+        api_version: argoproj.io/v1alpha1
+        kind: Application
+        namespace: argocd
+        name: root
+      register: platform_root_app
+      until: >-
+        platform_root_app.resources | length > 0
+        and platform_root_app.resources[0].status.sync.status | default('') == 'Synced'
+        and platform_root_app.resources[0].status.health.status | default('') == 'Healthy'
+      retries: "{{ platform_wait_retries }}"
+      delay: "{{ platform_wait_delay }}"

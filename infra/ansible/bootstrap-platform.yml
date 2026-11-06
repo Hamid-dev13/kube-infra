@@ -1,0 +1,15 @@
+# Installe la plateforme (Argo CD -> monitoring, logs) sur un cluster déjà monté.
+#
+# Depuis le playbook du cluster, à la fin :
+#   - import_playbook: <chemin>/infra/ansible/bootstrap-platform.yml
+#
+# Seul : ansible-playbook -i <inventaire> infra/ansible/bootstrap-platform.yml
+#
+# Le rôle s'exécute sur UN nœud du control plane (là où se trouve le kubeconfig admin).
+# Groupe d'inventaire à adapter au besoin : -e platform_target=<groupe>
+- name: Bootstrap de la plateforme
+  hosts: "{{ platform_target | default('control_plane') }}"
+  run_once: true
+  gather_facts: false
+  roles:
+    - platform_bootstrap
