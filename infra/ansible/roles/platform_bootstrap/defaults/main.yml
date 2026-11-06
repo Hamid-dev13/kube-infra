@@ -12,7 +12,8 @@ platform_install_deps: true
 
 # Binaire helm installé sur le nœud s'il est absent.
 platform_helm_version: "v3.16.4"
-platform_helm_arch: amd64
+# Les VM AWS du groupe sont en ARM (t4g). amd64 pour un labo x86.
+platform_helm_arch: arm64
 
 # Mot de passe admin de Grafana. À fournir via ansible-vault ; vide = généré au premier
 # passage. Le Secret n'est jamais écrasé ensuite, le mot de passe reste donc stable.

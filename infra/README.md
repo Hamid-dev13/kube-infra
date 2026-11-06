@@ -124,11 +124,17 @@ kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-passwor
 - [x] `repoURL` pointés sur le repo public `Hamid-dev13/kube-infra` (le repo Epitech est
       privé et une deploy key demande des droits admin que le groupe n'a pas).
 - [x] Rôle Ansible `platform_bootstrap` (testé sur le labo k3d, idempotent).
+- [x] Images de la stack vérifiées en arm64 (VM t4g) ; helm installé en arm64 par le rôle.
 - [ ] Le brancher à la fin du playbook du cluster (`import_playbook`) et tester sur AWS.
+      *Attend rôle 1 : nom du groupe control plane dans l'inventaire, OS des nœuds.*
 - [ ] Réactiver `kubeEtcd`, `kubeControllerManager`, `kubeScheduler`, `kubeProxy` dans
-      `components/monitoring/values.yaml` (désactivés car k3s les embarque), et faire
-      exposer leurs métriques dans la configuration kubeadm.
-- [ ] Exposer Argo CD et Grafana en HTTPS (Ingress/Gateway + cert-manager).
-- [ ] OIDC via dex sur Argo CD et Grafana ; décider si Argo CD garde son dex embarqué.
-- [ ] `grafana-admin` en SealedSecret.
-- [ ] Stockage de Loki : vérifier la StorageClass disponible (EFS limité à 20 Go pour le groupe).
+      `components/monitoring/values.yaml` (désactivés car k3s les embarque).
+      *Attend rôle 1 : exposer leurs métriques dans la configuration kubeadm.*
+- [ ] Ingress HTTPS pour Argo CD et Grafana (hosts en sslip.io).
+      *Attend rôle 1 : Ingress controller, ClusterIssuer Let's Encrypt, IP de kube-1.*
+- [ ] Brancher Argo CD et Grafana sur dex (OIDC).
+      *Attend rôle 3 : dex + Keycloak ; décider si Argo CD garde son dex embarqué.*
+- [ ] Remplacer le Secret `grafana-admin` créé par Ansible par un SealedSecret.
+      *Attend rôle 3 : contrôleur Sealed Secrets et sa clé.*
+- [ ] Stockage de Loki : StorageClass EFS (20 Go max pour le groupe).
+      *Attend rôle 1 : StorageClass/PV sur EFS.*
